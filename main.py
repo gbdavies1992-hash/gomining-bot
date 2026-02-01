@@ -2,7 +2,19 @@ import os
 import tweepy
 import google.generativeai as genai
 import traceback
+import random # Add this at the top
 
+# Create a list of all hashtags you like
+hashtag_pool = ["#GoMining", "#GOMINING", "#Bitcoin", "#PassiveIncome", "#Hashrate", "#CryptoMining", "#BTC", "#MiningFarm"]
+
+# Pick 2 random ones for this specific tweet
+selected_tags = " ".join(random.sample(hashtag_pool, 3))
+
+# Put them into your prompt
+prompt = (
+    f"Write a punchy tweet about my 10.39 TH/s GoMining farm. "
+    f"End the tweet with these exact hashtags: {selected_tags}"
+)
 try:
     # 1. Setup Gemini (Using the 2026 Stable Model)
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
