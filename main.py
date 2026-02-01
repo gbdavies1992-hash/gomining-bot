@@ -1,28 +1,28 @@
 import os
 import tweepy
 import google.generativeai as genai
+import random
 import traceback
-import random # Add this at the top
+from datetime import datetime
 
-# Create a list of all hashtags you like
-hashtag_pool = ["#GoMining", "#GOMINING", "#Bitcoin", "#PassiveIncome", "#Hashrate", "#CryptoMining", "#BTC", "#MiningFarm"]
-
-# Pick 2 random ones for this specific tweet
+# 1. Setup Data & Rotation
+# This list will be shuffled every time to keep the feed fresh
+hashtag_pool = [
+    "#GoMining", "#GOMINING", "#Bitcoin", "#PassiveIncome", 
+    "#Hashrate", "#CryptoMining", "#BTC", "#MiningFarm", 
+    "#DigitalGold", "#FinancialFreedom"
+]
 selected_tags = " ".join(random.sample(hashtag_pool, 3))
 
-# Put them into your prompt
-prompt = (
-    f"Write a punchy tweet about my 10.39 TH/s GoMining farm. "
-    f"End the tweet with these exact hashtags: {selected_tags}"
-)
+# Automatically get the current month name (e.g., "February")
+current_month = datetime.now().strftime("%B")
+
 try:
-    # 1. Setup Gemini (Using the 2026 Stable Model)
+    # 2. Setup Gemini
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    
-    # CHANGE: Updated from 'gemini-1.5-flash' to 'gemini-2.5-flash'
     model = genai.GenerativeModel('gemini-2.5-flash')
 
-    # 2. Setup X
+    # 3. Setup X (Twitter)
     client = tweepy.Client(
         consumer_key=os.environ["X_API_KEY"],
         consumer_secret=os.environ["X_API_SECRET"],
@@ -30,20 +30,23 @@ try:
         access_token_secret=os.environ["X_ACCESS_SECRET"]
     )
 
-    # 3. Instruction
+    # 4. Smart Dynamic Prompt
+    # This automatically tells the AI what month it is!
     prompt = (
-        "Write a short, punchy tweet about my GoMining farm. "
-        "Stats: 10.39 TH/s and 15W/TH efficiency. "
-        "Theme: February 'Savings Mode'—stacking GOMINING to reinvest in March. "
-        "Use #GoMining #GOMINING #Bitcoin."
+        f"Write a short, engaging tweet about my GoMining farm. "
+        f"Stats: 10.39 TH/s power and 15W/TH efficiency. "
+        f"The current month is {current_month}. If it's February, talk about savings mode. "
+        f"If it's March, talk about reinvesting for growth. Otherwise, be creative. "
+        f"End with these exact hashtags: {selected_tags}"
     )
 
-    # 4. Generate and Post
+    # 5. Generate and Post
     response = model.generate_content(prompt)
     tweet_text = response.text.strip().replace('"', '')
 
+    # Post it!
     client.create_tweet(text=tweet_text)
-    print(f"Successfully posted: {tweet_text}")
+    print(f"Successfully posted for {current_month}: {tweet_text}")
 
 except Exception as e:
     print("--- ERROR LOG ---")
