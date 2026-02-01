@@ -1,20 +1,27 @@
-name: GoMining Bot Schedule
+name: GoMining Daily Bot
+
 on:
   schedule:
-    - cron: '0 13 * * *'  # Runs at 1:00 PM UTC
-    - cron: '0 22 * * *'  # Runs at 10:00 PM UTC
+    - cron: '0 9 * * *'
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
 jobs:
-  tweet:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install dependencies
         run: pip install tweepy google-generativeai
-      - name: Run Script
+
+      - name: Run the bot
         env:
           X_API_KEY: ${{ secrets.X_API_KEY }}
           X_API_SECRET: ${{ secrets.X_API_SECRET }}
