@@ -37,6 +37,11 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # This creates the files if they don't exist so Git doesn't crash
+          touch replied_ids.txt last_post_window.txt
+          
           git add replied_ids.txt last_post_window.txt
-          # Only commit if there are actually changes to save
+          
+          # Only commit and push if there are actual changes
           git diff --quiet && git diff --staged --quiet || (git commit -m "Bot memory updated [skip ci]" && git push)
