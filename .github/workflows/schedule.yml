@@ -1,17 +1,17 @@
-name: GoMining Daily Bot
+name: GoMining Bot Schedule
 
 on:
   schedule:
-    - cron: '0 9 * * *'
-    - cron: '0 21 * * *'
-  workflow_dispatch:
+    # This runs every hour at minute 0 (UTC)
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows you to run it manually for testing
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -19,13 +19,16 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: pip install tweepy google-generativeai
+        run: |
+          pip install tweepy google-generativeai python-dotenv
 
-      - name: Run the bot
+      - name: Run Bot
         env:
+          # This maps your GitHub Secrets to the script
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
           X_API_SECRET: ${{ secrets.X_API_SECRET }}
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python main.py
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+        run: python your_script_name.py
