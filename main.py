@@ -50,7 +50,7 @@ def should_post_now():
 
 # --- 4. API SETUP ---
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-flash-latest')
 client = tweepy.Client(
     bearer_token=os.getenv("X_BEARER_TOKEN"),
     consumer_key=os.getenv("X_API_KEY"),
