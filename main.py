@@ -47,7 +47,17 @@ def should_post_now():
                 return False, "already_posted_this_hour"
                 
     return True, timestamp
+import os
+import google.generativeai as genai
 
+# SANITY CHECK
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    print("❌ ERROR: GEMINI_API_KEY environment variable is empty!")
+else:
+    print(f"✅ Key found: {api_key[:5]}...{api_key[-5:]}")
+
+genai.configure(api_key=api_key)
 # --- 4. API SETUP ---
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-flash-latest')
