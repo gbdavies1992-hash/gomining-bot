@@ -1,16 +1,18 @@
-name: GoMining Bot Schedule
+name: GoMining Bot 12x Daily
 
 on:
   schedule:
-    # This runs every hour at minute 0 (UTC)
-    - cron: '0 * * * *'
-  workflow_dispatch: # Allows you to run it manually for testing
+    # Runs every 30 mins to ensure it hits the top of every hour
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Important for saving the text files
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -19,12 +21,10 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: |
-          pip install tweepy google-generativeai python-dotenv
+        run: pip install tweepy google-generativeai python-dotenv
 
-      - name: Run Bot
+      - name: Run Bot Script
         env:
-          # This maps your GitHub Secrets to the script
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
           X_API_SECRET: ${{ secrets.X_API_SECRET }}
@@ -32,3 +32,11 @@ jobs:
           X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
         run: python your_script_name.py
+
+      - name: Save Bot Memory (Commit changes)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add replied_ids.txt last_post_window.txt
+          # Only commit if there are actually changes to save
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Bot memory updated [skip ci]" && git push)
