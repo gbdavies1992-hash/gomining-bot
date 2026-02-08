@@ -1,54 +1,53 @@
-import os
-import tweepy
-import google.generativeai as genai
-import random
-import traceback
-from datetime import datetime
+# --- ADD THIS TO YOUR CONFIG AREA ---
+LAST_POST_FILE = "last_post.txt"
 
-# 1. Setup Data & Rotation
-# This list will be shuffled every time to keep the feed fresh
-hashtag_pool = [
-    "#GoMining", "#GOMINING", "#Bitcoin", "#PassiveIncome", 
-    "#Hashrate", "#CryptoMining", "#BTC", "#MiningFarm", 
-    "#DigitalGold", "#FinancialFreedom"
-]
-selected_tags = " ".join(random.sample(hashtag_pool, 3))
+def has_posted_today():
+    today = datetime.now().strftime("%Y-%m-%d")
+    if not os.path.exists(LAST_POST_FILE):
+        return False
+    with open(LAST_POST_FILE, "r") as f:
+        return f.read().strip() == today
 
-# Automatically get the current month name (e.g., "February")
-current_month = datetime.now().strftime("%B")
+def mark_as_posted():
+    today = datetime.now().strftime("%Y-%m-%d")
+    with open(LAST_POST_FILE, "w") as f:
+        f.write(today)
 
-try:
-    # 2. Setup Gemini
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-2.5-flash')
+# --- UPDATED RUN_BOT FUNCTION ---
+def run_bot():
+    current_month = datetime.now().strftime("%B")
+    replied_ids = get_replied_ids()
+    
+    try:
+        # 1. POST DAILY UPDATE (If not already done today)
+        if not has_posted_today():
+            logger.info("Posting daily farm update...")
+            daily_prompt = (
+                f"Write a short, hype tweet about my GoMining farm. "
+                f"Stats: 10.39 TH/s power. It's {current_month}. "
+                f"Be creative and bullish on Bitcoin!"
+            )
+            daily_response = model.generate_content(daily_prompt)
+            tweet_text = daily_response.text.strip().replace('"', '')
+            
+            client.create_tweet(text=tweet_text)
+            mark_as_posted()
+            logger.info(f"Daily update posted: {tweet_text}")
+        
+        # 2. CHECK & REPLY TO MENTIONS
+        bot_user = client.get_me()
+        bot_id = bot_user.data.id
+        mentions = client.get_users_mentions(id=bot_id)
 
-    # 3. Setup X (Twitter)
-    client = tweepy.Client(
-        consumer_key=os.environ["X_API_KEY"],
-        consumer_secret=os.environ["X_API_SECRET"],
-        access_token=os.environ["X_ACCESS_TOKEN"],
-        access_token_secret=os.environ["X_ACCESS_SECRET"]
-    )
+        if mentions.data:
+            for tweet in mentions.data:
+                tweet_id = str(tweet.id)
+                if tweet_id not in replied_ids:
+                    # (Insert the reply logic we built in the previous step here)
+                    # ...
+                    save_replied_id(tweet_id)
+        
+        logger.info("Bot cycle complete.")
 
-    # 4. Smart Dynamic Prompt
-    # This automatically tells the AI what month it is!
-    prompt = (
-        f"Write a short, engaging tweet about my GoMining farm. "
-        f"Stats: 10.39 TH/s power and 15W/TH efficiency. "
-        f"The current month is {current_month}. If it's February, talk about savings mode. "
-        f"If it's March, talk about reinvesting for growth. Otherwise, be creative. "
-        f"End with these exact hashtags: {selected_tags}"
-    )
-
-    # 5. Generate and Post
-    response = model.generate_content(prompt)
-    tweet_text = response.text.strip().replace('"', '')
-
-    # Post it!
-    client.create_tweet(text=tweet_text)
-    print(f"Successfully posted for {current_month}: {tweet_text}")
-
-except Exception as e:
-    print("--- ERROR LOG ---")
-    print(traceback.format_exc())
-    exit(1)
+    except Exception:
+        logger.error(f"Bot execution failed: {traceback.format_exc()}")
