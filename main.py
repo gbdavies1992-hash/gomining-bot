@@ -61,7 +61,7 @@ if not gemini_key:
 
 # New 2.0 Client structure
 gemini_client = genai.Client(api_key=gemini_key)
-MODEL_ID = "gemini-2.0-flash"
+MODEL_ID = "gemini-1.5-flash"
 
 # X (Twitter) Setup
 client = tweepy.Client(
