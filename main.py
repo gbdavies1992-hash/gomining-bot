@@ -1,6 +1,6 @@
 import os
 import tweepy
-import google.generativeai as genai
+from google import genai  # Corrected import
 import random
 import logging
 from datetime import datetime
@@ -41,6 +41,7 @@ def save_replied_id(tweet_id):
 def should_post_now():
     now = datetime.now()
     current_hour = now.hour
+    # Strictly 11 AM to 11 PM UK (assuming server is set to UK/UTC)
     if not (11 <= current_hour <= 23):
         return False, "quiet_hours"
 
@@ -52,16 +53,17 @@ def should_post_now():
     return True, timestamp
 
 # --- 5. API SETUP & SANITY CHECK ---
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    logger.error("❌ GEMINI_API_KEY is empty!")
-else:
-    logger.info(f"✅ Gemini Key found: {api_key[:5]}...{api_key[-5:]}")
+# Gemini 2.0 Flash Setup
+gemini_key = os.getenv("GEMINI_API_KEY")
+if not gemini_key:
+    logger.error("❌ GEMINI_API_KEY is missing!")
+    exit(1)
 
-genai.configure(api_key=api_key)
-# Using 'gemini-flash-latest' to avoid future 404 version errors
-model = genai.GenerativeModel('gemini-flash-latest')
+# New 2.0 Client structure
+gemini_client = genai.Client(api_key=gemini_key)
+MODEL_ID = "gemini-2.0-flash"
 
+# X (Twitter) Setup
 client = tweepy.Client(
     consumer_key=os.getenv("X_API_KEY"),
     consumer_secret=os.getenv("X_API_SECRET"),
@@ -77,30 +79,34 @@ def run_bot():
     try:
         # --- PART A: THE DAYTIME POSTS (HYPE TWEETS) ---
         if can_post:
-            logger.info(f"Posting for hour {datetime.now().hour}...")
+            logger.info(f"Attempting post for hour {datetime.now().hour}...")
             
-            # PROMPT UPDATED: Now includes Engagement Hooks
             prompt = (
                 f"Write a short, high-energy hype tweet for my GoMining farm. "
                 f"Stats: 10.39 TH/s. Make it relevant to a UK audience and Bitcoin. "
                 f"CRITICAL: End with a question to the community about passive income "
-                f"or BTC mining to encourage them to reply! "
+                f"or BTC mining to encourage them to reply! Max 250 chars. "
                 f"Hashtags: {selected_tags}"
             )
             
-            response = model.generate_content(prompt)
+            response = gemini_client.models.generate_content(model=MODEL_ID, contents=prompt)
             tweet_text = response.text.strip().replace('"', '')
             
+            # Ensure we stay under X character limit
+            if len(tweet_text) > 280:
+                tweet_text = tweet_text[:277] + "..."
+
             client.create_tweet(text=tweet_text)
-            with open(LAST_POST_FILE, "w") as f: f.write(window_id)
-            logger.info(f"Daily post sent: {tweet_text}")
+            with open(LAST_POST_FILE, "w") as f: 
+                f.write(window_id)
+            logger.info(f"✅ Daily post sent: {tweet_text}")
         else:
-            logger.info(f"Skipping post: {window_id}")
+            logger.info(f"⏸️ Skipping post: {window_id}")
 
         # --- PART B: REPLIES (Mention Checking) ---
         bot_user = client.get_me()
         if not bot_user.data:
-            logger.error("❌ Could not verify X User. Check your X API Keys!")
+            logger.error("❌ Could not verify X User. Check API Keys!")
             return
 
         bot_id = bot_user.data.id
@@ -111,23 +117,23 @@ def run_bot():
             for tweet in mentions.data:
                 tid = str(tweet.id)
                 if tid not in replied_ids:
-                    logger.info(f"New mention from ID {tid}. Like and Reply triggered.")
+                    logger.info(f"💬 New mention: {tid}. Processing...")
                     
-                    # NEW: Like the tweet before replying
                     try:
                         client.like(tweet.id)
                     except Exception as le:
                         logger.warning(f"Could not like tweet: {le}")
 
-                    reply_prompt = f"Reply to this GoMining mention: '{tweet.text}'. Keep it helpful and hype."
-                    reply_text = model.generate_content(reply_prompt).text.strip()
+                    reply_prompt = f"Reply to this GoMining mention: '{tweet.text}'. Keep it helpful and hype. Max 200 chars."
+                    reply_response = gemini_client.models.generate_content(model=MODEL_ID, contents=reply_prompt)
+                    reply_text = reply_response.text.strip()
                     
                     client.create_tweet(text=reply_text, in_reply_to_tweet_id=tweet.id)
                     save_replied_id(tid)
-                    logger.info(f"Replied: {reply_text}")
+                    logger.info(f"✅ Replied: {reply_text}")
         
     except Exception as e:
-        logger.error(f"Error during execution: {e}")
+        logger.error(f"❌ Error during execution: {e}")
 
 if __name__ == "__main__":
     run_bot()
