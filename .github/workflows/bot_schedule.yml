@@ -2,9 +2,10 @@ name: GoMining Bot 12x Daily
 
 on:
   schedule:
-    # Runs every 30 mins to ensure it hits the top of every hour
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
+    # Runs every 30 minutes at :14 and :44 past the hour. 
+    # This gives the bot two chances per hour to hit its UK window!
+    - cron: '14,44 * * * *'
+  workflow_dispatch: # Keeps the manual "Run" button active
 
 jobs:
   run-bot:
