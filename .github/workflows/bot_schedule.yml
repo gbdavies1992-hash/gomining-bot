@@ -2,8 +2,7 @@ name: GoMining Bot 12x Daily
 
 on:
   schedule:
-    # Runs every 30 minutes at :14 and :44 past the hour. 
-    # This gives the bot two chances per hour to hit its UK window!
+    # Runs at :14 and :44 past the hour. 
     - cron: '14,44 * * * *'
   workflow_dispatch: # Keeps the manual "Run" button active
 
@@ -11,18 +10,19 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Important for saving the text files
+      contents: write # Required for the "Save Bot Memory" step below
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install tweepy google-generativeai python-dotenv
+        # Updated to the new google-genai package
+        run: pip install tweepy google-genai python-dotenv
 
       - name: Run Bot Script
         env:
@@ -31,18 +31,18 @@ jobs:
           X_API_SECRET: ${{ secrets.X_API_SECRET }}
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
-          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          # REMOVED X_BEARER_TOKEN to fix 403 Forbidden errors
         run: python main.py
 
       - name: Save Bot Memory (Commit changes)
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # This creates the files if they don't exist so Git doesn't crash
+          # Creates the files if they don't exist to prevent git errors
           touch replied_ids.txt last_post_window.txt
           
           git add replied_ids.txt last_post_window.txt
           
-          # Only commit and push if there are actual changes
+          # Only commit and push if there are actual changes to memory
           git diff --quiet && git diff --staged --quiet || (git commit -m "Bot memory updated [skip ci]" && git push)
